@@ -1,0 +1,8 @@
+# Media uploads lokal (hapus baris ini jika ingin ikut meng-commit contoh media)
+data/uploads/*
+!data/uploads/.gitkeep
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.log

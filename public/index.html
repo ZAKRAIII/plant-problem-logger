@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plant Problem Logger</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Name Gate Modal -->
+  <div id="nameModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h2>Selamat Datang di Plant Problem Logger</h2>
+      </div>
+      <form id="nameForm" class="modal-body">
+        <p class="muted">Masukkan nama Anda untuk pencatatan pelapor / teknisi pada sesi ini.</p>
+        <div class="field">
+          <label for="userNameInput">Nama Anda</label>
+          <input type="text" id="userNameInput" placeholder="Contoh: Budi / Teknisi Shift 2" required autocomplete="off" />
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Mulai Gunakan Aplikasi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <div>
+          <h1>Plant Problem Logger</h1>
+          <span class="brand-sub">Monitoring &amp; Pencatatan Kendala Mesin</span>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="logsTab">Log Problem</button>
+        <button class="tab-btn" data-tab="equipTab">Master Equipment</button>
+      </nav>
+    </div>
+    <div class="topbar-right">
+      <div class="user-pill" id="userBadge" title="Klik untuk ganti nama">
+        <span class="user-avatar">👤</span>
+        <span id="currentUserName">-</span>
+        <button type="button" id="changeNameBtn" class="btn-link">Ganti</button>
+      </div>
+      <button type="button" id="exportCsvBtn" class="btn btn-secondary btn-sm">Export CSV</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- TAB 1: LOG PROBLEM -->
+    <section id="logsTab" class="tab-panel active">
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">Total Log Tercatat</span>
+          <strong class="kpi-value" id="kpiTotal">0</strong>
+        </div>
+        <div class="kpi-card kpi-open">
+          <span class="kpi-label">Problem Aktif (Open)</span>
+          <strong class="kpi-value" id="kpiOpen">0</strong>
+        </div>
+        <div class="kpi-card kpi-critical">
+          <span class="kpi-label">Critical Aktif</span>
+          <strong class="kpi-value" id="kpiCriticalOpen">0</strong>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Total Downtime Tercatat</span>
+          <strong class="kpi-value" id="kpiDowntime">0 mnt</strong>
+        </div>
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="card breakdown-card">
+        <div class="card-header">
+          <h3>Ringkasan per Kategori Kendala</h3>
+        </div>
+        <div id="categoryBars" class="category-bars"></div>
+      </div>
+
+      <!-- Quick Input Form -->
+      <div class="card">
+        <div class="card-header">
+          <h3>+ Catat Problem Baru</h3>
+          <button type="button" id="resetFormBtn" class="btn btn-ghost btn-sm">Reset Form</button>
+        </div>
+        <form id="logForm" class="form-grid">
+          <div class="field">
+            <label for="fLine">Line *</label>
+            <select id="fLine" required>
+              <option value="">-- Pilih Line --</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fKode">Kode Mesin *</label>
+            <select id="fKode" required disabled>
+              <option value="">-- Pilih Line dulu --</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fEquipment">Nama Equipment</label>
+            <input type="text" id="fEquipment" readonly placeholder="Otomatis terisi" />
+          </div>
+
+          <div class="field">
+            <label for="fKategori">Kategori Kendala *</label>
+            <select id="fKategori" required></select>
+          </div>
+
+          <div class="field">
+            <label for="fStatus">Status / Severity *</label>
+            <select id="fStatus" required></select>
+          </div>
+
+          <div class="field">
+            <label for="fShift">Shift</label>
+            <select id="fShift"></select>
+          </div>
+
+          <div class="field">
+            <label for="fTanggalMasuk">Tanggal Problem Masuk *</label>
+            <input type="date" id="fTanggalMasuk" required />
+          </div>
+
+          <div class="field">
+            <label for="fJamMasuk">
+              Jam Problem Masuk *
+              <button type="button" id="nowMasukBtn" class="btn-link">Sekarang</button>
+            </label>
+            <input type="time" id="fJamMasuk" step="1" required />
+          </div>
+
+          <div class="field">
+            <label for="fPelapor">Pelapor</label>
+            <input type="text" id="fPelapor" placeholder="Nama pelapor" />
+          </div>
+
+          <div class="field field-span-2">
+            <label for="fDeskripsi">Deskripsi Kendala *</label>
+            <input type="text" id="fDeskripsi" placeholder="Contoh: kabel putus, sensor error, konveyor slip..." required />
+          </div>
+
+          <div class="field">
+            <label for="fPic">PIC Teknisi (Opsional)</label>
+            <input type="text" id="fPic" placeholder="Nama teknisi" />
+          </div>
+
+          <div class="field field-span-2">
+            <label for="fKegiatanPerbaikan">Deskripsi Kegiatan Perbaikan (Opsional)</label>
+            <input type="text" id="fKegiatanPerbaikan" placeholder="Uraian langkah perbaikan yang dilakukan..." />
+          </div>
+
+          <div class="field">
+            <label for="fTanggalSelesai">Tanggal Selesai (Opsional)</label>
+            <input type="date" id="fTanggalSelesai" />
+          </div>
+
+          <div class="field">
+            <label for="fJamSelesai">
+              Jam Selesai (Kosongkan jika masih Open)
+              <button type="button" id="clearSelesaiFormBtn" class="btn-link">Kosongkan</button>
+            </label>
+            <input type="time" id="fJamSelesai" step="1" />
+          </div>
+
+          <div class="field field-span-2">
+            <label for="fReportFiles">Foto / Video Saat Report (Opsional, maks. 25 MB/file)</label>
+            <input type="file" id="fReportFiles" accept="image/*,video/*" multiple />
+            <div id="fReportPreview" class="media-list"></div>
+          </div>
+
+          <div class="field field-span-2">
+            <label for="fResolveFiles">Foto / Video Setelah Resolve (Opsional, maks. 25 MB/file)</label>
+            <input type="file" id="fResolveFiles" accept="image/*,video/*" multiple />
+            <div id="fResolvePreview" class="media-list"></div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Simpan Problem Log</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Filter & Table -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Daftar Log Problem</h3>
+          <span class="muted" id="logCountInfo">0 data</span>
+        </div>
+
+        <div class="filters-bar">
+          <input type="text" id="filterSearch" placeholder="Cari kode, equipment, deskripsi, pelapor..." />
+          <select id="filterProgress">
+            <option value="all">Semua Progress</option>
+            <option value="open">Open (Belum Selesai)</option>
+            <option value="resolved">Resolved (Selesai)</option>
+          </select>
+          <select id="filterLine">
+            <option value="all">Semua Line</option>
+          </select>
+          <select id="filterKategori">
+            <option value="all">Semua Kategori</option>
+          </select>
+          <select id="filterStatus">
+            <option value="all">Semua Severity</option>
+          </select>
+          <input type="date" id="filterDateFrom" title="Dari tanggal" />
+          <input type="date" id="filterDateTo" title="Sampai tanggal" />
+          <button type="button" id="resetFilterBtn" class="btn btn-ghost btn-sm">Reset</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Waktu Masuk</th>
+                <th>Line</th>
+                <th>Mesin / Equipment</th>
+                <th>Kategori</th>
+                <th>Deskripsi Kendala</th>
+                <th>Deskripsi Kegiatan Perbaikan</th>
+                <th>Dokumentasi (Foto/Video)</th>
+                <th>Severity</th>
+                <th>Progress</th>
+                <th>Waktu Selesai</th>
+                <th>Durasi</th>
+                <th>Pelapor / PIC</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: MASTER EQUIPMENT -->
+    <section id="equipTab" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h3>+ Tambah Master Equipment</h3>
+        </div>
+        <form id="equipForm" class="form-grid">
+          <div class="field">
+            <label for="eqLine">Line *</label>
+            <input type="text" id="eqLine" placeholder="Contoh: 3" required />
+          </div>
+          <div class="field">
+            <label for="eqKode">Kode Mesin *</label>
+            <input type="text" id="eqKode" placeholder="Contoh: 103 HC 99" required />
+          </div>
+          <div class="field field-span-2">
+            <label for="eqJenis">Jenis / Nama Equipment *</label>
+            <input type="text" id="eqJenis" placeholder="Contoh: konveyor / Primary Shredder" required />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Tambah Equipment</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Daftar Master Mesin (<span id="equipCount">0</span>)</h3>
+          <div class="filters-inline">
+            <input type="text" id="equipSearch" placeholder="Cari kode atau nama equipment..." />
+            <select id="equipFilterLine">
+              <option value="all">Semua Line</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Line</th>
+                <th>Kode Mesin</th>
+                <th>Jenis Equipment</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="equipTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit / Resolve Log Modal -->
+  <div id="editLogModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="editModalTitle">Edit / Selesaikan Problem #<span id="editLogIdLabel"></span></h2>
+        <button type="button" id="closeEditModalBtn" class="btn-close">&times;</button>
+      </div>
+      <form id="editLogForm" class="modal-body">
+        <input type="hidden" id="editLogId" />
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="eLine">Line *</label>
+            <select id="eLine" required></select>
+          </div>
+          <div class="field">
+            <label for="eKode">Kode Mesin *</label>
+            <select id="eKode" required></select>
+          </div>
+          <div class="field">
+            <label for="eEquipment">Nama Equipment</label>
+            <input type="text" id="eEquipment" readonly />
+          </div>
+
+          <div class="field">
+            <label for="eKategori">Kategori *</label>
+            <select id="eKategori" required></select>
+          </div>
+          <div class="field">
+            <label for="eStatus">Severity *</label>
+            <select id="eStatus" required></select>
+          </div>
+          <div class="field">
+            <label for="eShift">Shift</label>
+            <select id="eShift"></select>
+          </div>
+
+          <div class="field field-span-3">
+            <label for="eDeskripsi">Deskripsi Kendala *</label>
+            <input type="text" id="eDeskripsi" required />
+          </div>
+
+          <div class="field">
+            <label for="ePelapor">Pelapor</label>
+            <input type="text" id="ePelapor" />
+          </div>
+          <div class="field">
+            <label for="ePic">PIC Teknisi</label>
+            <input type="text" id="ePic" />
+          </div>
+          <div class="field field-span-3">
+            <label for="eKegiatanPerbaikan">Deskripsi Kegiatan Perbaikan</label>
+            <textarea id="eKegiatanPerbaikan" rows="2" placeholder="Jelaskan kegiatan/langkah perbaikan yang dilakukan..."></textarea>
+          </div>
+        </div>
+
+        <div class="media-edit-grid">
+          <div class="media-box">
+            <label for="eReportFiles">Foto / Video Saat Report</label>
+            <input type="file" id="eReportFiles" accept="image/*,video/*" multiple />
+            <div id="eReportPreview" class="media-list"></div>
+          </div>
+          <div class="media-box">
+            <label for="eResolveFiles">Foto / Video Setelah Resolve</label>
+            <input type="file" id="eResolveFiles" accept="image/*,video/*" multiple />
+            <div id="eResolvePreview" class="media-list"></div>
+          </div>
+        </div>
+
+        <div class="resolve-box">
+          <div class="resolve-box-header">
+            <strong>Waktu Masuk &amp; Waktu Resolve (Selesai)</strong>
+            <div class="resolve-quick-actions">
+              <button type="button" id="fillNowResolveBtn" class="btn btn-success btn-sm">Isi Selesai Sekarang</button>
+              <button type="button" id="clearResolveBtn" class="btn btn-ghost btn-sm">Kosongkan (Re-open)</button>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="eTanggalMasuk">Tanggal Masuk *</label>
+              <input type="date" id="eTanggalMasuk" required />
+            </div>
+            <div class="field">
+              <label for="eJamMasuk">Jam Masuk *</label>
+              <input type="time" id="eJamMasuk" step="1" required />
+            </div>
+            <div class="field">
+              <label>Estimasi Durasi</label>
+              <div id="eDurationPreview" class="duration-preview">-</div>
+            </div>
+            <div class="field">
+              <label for="eTanggalSelesai">Tanggal Selesai</label>
+              <input type="date" id="eTanggalSelesai" />
+            </div>
+            <div class="field">
+              <label for="eJamSelesai">Jam Selesai</label>
+              <input type="time" id="eJamSelesai" step="1" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancelEditModalBtn" class="btn btn-ghost">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Equipment Modal -->
+  <div id="editEquipModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h2>Edit Equipment</h2>
+        <button type="button" id="closeEquipModalBtn" class="btn-close">&times;</button>
+      </div>
+      <form id="editEquipForm" class="modal-body">
+        <input type="hidden" id="editEqId" />
+        <div class="field">
+          <label for="editEqLine">Line *</label>
+          <input type="text" id="editEqLine" required />
+        </div>
+        <div class="field">
+          <label for="editEqKode">Kode Mesin *</label>
+          <input type="text" id="editEqKode" required />
+        </div>
+        <div class="field">
+          <label for="editEqJenis">Jenis Equipment *</label>
+          <input type="text" id="editEqJenis" required />
+        </div>
+        <div class="field checkbox-field">
+          <label>
+            <input type="checkbox" id="editEqActive" />
+            Aktif (tampil di dropdown input problem)
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelEquipModalBtn" class="btn btn-ghost">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Media Preview Lightbox Modal -->
+  <div id="mediaModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="mediaModalTitle">Pratinjau Dokumentasi</h2>
+        <button type="button" id="closeMediaModalBtn" class="btn-close">&times;</button>
+      </div>
+      <div id="mediaModalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

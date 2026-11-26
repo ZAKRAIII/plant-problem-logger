@@ -1,0 +1,275 @@
+﻿[
+    {
+        "id":  1,
+        "kode_mesin":  "103 HCIC 00",
+        "jenis_equipment":  "Conveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  2,
+        "kode_mesin":  "103 HCIC 01",
+        "jenis_equipment":  "Conveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  3,
+        "kode_mesin":  "103 HC 03A",
+        "jenis_equipment":  "Conveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  4,
+        "kode_mesin":  "103 HCIC 02A",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  5,
+        "kode_mesin":  "103 HCIC 02B",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  6,
+        "kode_mesin":  "103 IC 04A",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  7,
+        "kode_mesin":  "103 HCIC 05",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  8,
+        "kode_mesin":  "103 HCIC 03",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  9,
+        "kode_mesin":  "103 HC 10A",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  10,
+        "kode_mesin":  "103 HC 10B",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  11,
+        "kode_mesin":  "103 HCIC 04A",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  12,
+        "kode_mesin":  "103 HCIC 04B",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  13,
+        "kode_mesin":  "103 HCIC 06A",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  14,
+        "kode_mesin":  "103 HCIC 06B",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  15,
+        "kode_mesin":  "103 IC 11A",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  16,
+        "kode_mesin":  "103 IC 11B",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  17,
+        "kode_mesin":  "103 IC 15",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  18,
+        "kode_mesin":  "103 IC 12",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  19,
+        "kode_mesin":  "103 HC 16A",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  20,
+        "kode_mesin":  "103 HC 16B",
+        "jenis_equipment":  "konveyor",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  21,
+        "kode_mesin":  "103 CD 001",
+        "jenis_equipment":  "Compacting Dehydrator 1.1",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  22,
+        "kode_mesin":  "103 CD 002",
+        "jenis_equipment":  "Compacting Dehydrator 1.2",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  23,
+        "kode_mesin":  "103 PS 001",
+        "jenis_equipment":  "Primary Shredder",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  24,
+        "kode_mesin":  "103 DS 001",
+        "jenis_equipment":  "Dinamic Screener",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  25,
+        "kode_mesin":  "103 WS 001",
+        "jenis_equipment":  "Wind Shifter",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  26,
+        "kode_mesin":  "103 SS 001",
+        "jenis_equipment":  "Secondary Shredder 1.1",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  27,
+        "kode_mesin":  "103 SS 002",
+        "jenis_equipment":  "Secondary Shredder 1.2",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  28,
+        "kode_mesin":  "103 RD 001",
+        "jenis_equipment":  "Furnace \u0026 Drum Dryer 1.1",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  29,
+        "kode_mesin":  "103 RD 002",
+        "jenis_equipment":  "Furnace \u0026 Drum Dryer 1.2",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  30,
+        "kode_mesin":  "103 -",
+        "jenis_equipment":  "Bag Filter, Cyclone \u0026 Wet Scrubber",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  31,
+        "kode_mesin":  "103 BM 001",
+        "jenis_equipment":  "Baler Machine",
+        "line":  "3",
+        "is_active":  true
+    },
+    {
+        "id":  32,
+        "kode_mesin":  "102 T 001",
+        "jenis_equipment":  "test 2.1",
+        "line":  "2",
+        "is_active":  true
+    },
+    {
+        "id":  33,
+        "kode_mesin":  "102 T 002",
+        "jenis_equipment":  "test 2.2",
+        "line":  "2",
+        "is_active":  true
+    },
+    {
+        "id":  34,
+        "kode_mesin":  "102 T 003",
+        "jenis_equipment":  "test 2.3",
+        "line":  "2",
+        "is_active":  true
+    },
+    {
+        "id":  35,
+        "kode_mesin":  "102 T 004",
+        "jenis_equipment":  "test 2.4",
+        "line":  "2",
+        "is_active":  true
+    },
+    {
+        "id":  36,
+        "kode_mesin":  "101 T 001",
+        "jenis_equipment":  "test 1.1",
+        "line":  "1",
+        "is_active":  true
+    },
+    {
+        "id":  37,
+        "kode_mesin":  "101 T 002",
+        "jenis_equipment":  "test 1.2",
+        "line":  "1",
+        "is_active":  true
+    },
+    {
+        "id":  38,
+        "kode_mesin":  "101 T 003",
+        "jenis_equipment":  "test 1.3",
+        "line":  "1",
+        "is_active":  true
+    },
+    {
+        "id":  39,
+        "kode_mesin":  "101 T 004",
+        "jenis_equipment":  "test 1.4",
+        "line":  "1",
+        "is_active":  true
+    }
+]
