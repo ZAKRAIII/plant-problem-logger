@@ -6,7 +6,7 @@
 
 window.APP_CONFIG = {
   USE_SUPABASE: "auto",
-  SUPABASE_URL: "https://mzczuofvngnvcafubhdh.supabase.co/rest/v1/",
+  SUPABASE_URL: "https://mzczuofvngnvcafubhdh.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_EyxeticMeak-YvYrscCKGw_ifZRncMW",
   SUPABASE_BUCKET: "plant-media",
 

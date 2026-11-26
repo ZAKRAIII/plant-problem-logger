@@ -173,7 +173,11 @@ function isSupabaseMode() {
 
 function getSupabaseCfg() {
   const cfg = window.APP_CONFIG || {};
-  const url = String(cfg.SUPABASE_URL || "").replace(/\/+$/, "");
+  const url = String(cfg.SUPABASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/rest\/v1$/i, "")
+    .replace(/\/+$/, "");
   const key = String(cfg.SUPABASE_ANON_KEY || "").trim();
   const bucket = String(cfg.SUPABASE_BUCKET || "plant-media").trim();
   if (!url || !key || key.includes("PASTE_YOUR_")) {
@@ -184,11 +188,14 @@ function getSupabaseCfg() {
 
 function supabaseHeaders(extra = {}) {
   const { key } = getSupabaseCfg();
-  return {
+  const headers = {
     apikey: key,
-    Authorization: `Bearer ${key}`,
     ...extra,
   };
+  if (!key.startsWith("sb_publishable_")) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+  return headers;
 }
 
 async function supabaseRest(path, options = {}) {
@@ -1023,20 +1030,34 @@ function renderAll() {
 }
 
 async function init() {
+  const cfg = window.APP_CONFIG || {};
+  state.categories = cfg.CATEGORIES || ["elektrikal", "mekanikal", "material", "instrument"];
+  state.statuses = cfg.STATUSES || ["critical", "moderate"];
+  state.shifts = cfg.SHIFTS || ["Shift 1", "Shift 2", "Shift 3"];
+
   try {
     const data = await api("/api/bootstrap");
     state.equipments = data.equipments || [];
     state.logs = data.logs || [];
-    state.categories = data.categories || [];
-    state.statuses = data.statuses || [];
-    state.shifts = data.shifts || [];
-
+    state.categories = data.categories || state.categories;
+    state.statuses = data.statuses || state.statuses;
+    state.shifts = data.shifts || state.shifts;
+  } catch (err) {
+    console.error("Bootstrap error:", err);
+    showToast("Gagal memuat data dari server: " + err.message);
+    const main = document.querySelector("main.container");
+    if (main && !$("bootstrapErrorBanner")) {
+      const banner = document.createElement("div");
+      banner.id = "bootstrapErrorBanner";
+      banner.style.cssText = "background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-weight:600;";
+      banner.textContent = "Koneksi database gagal: " + err.message;
+      main.prepend(banner);
+    }
+  } finally {
     populateSelectOptions();
     resetLogFormDefaults();
     initUserIdentity();
     renderAll();
-  } catch (err) {
-    showToast("Gagal memuat data awal: " + err.message);
   }
 }
 

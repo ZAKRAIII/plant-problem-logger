@@ -68,6 +68,12 @@ create policy "Allow all equipments" on public.equipments
 
 create policy "Allow all problem_logs" on public.problem_logs
   for all using (true) with check (true);
+
+-- 4. Berikan hak akses tabel & sequence ke role anon
+grant usage on schema public to anon, authenticated;
+grant all on table public.equipments to anon, authenticated;
+grant all on table public.problem_logs to anon, authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;
 ```
 
 3. *(Opsional)* Masukkan data awal **39 unit mesin & 2 log awal** dengan menjalankan query `INSERT` berikut di **SQL Editor → New query** (atau input manual lewat **Table Editor**):
