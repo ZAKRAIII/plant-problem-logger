@@ -451,6 +451,33 @@
     </div>
   </div>
 
+  <!-- Generate WA Report Modal -->
+  <div id="waReportModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Generate Report WhatsApp — Problem #<span id="waLogIdLabel"></span></h2>
+        <button type="button" id="closeWaModalBtn" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="waReportText">Teks Laporan (siap tempel ke WhatsApp, bisa diedit)</label>
+          <textarea id="waReportText" rows="12" class="wa-textarea"></textarea>
+        </div>
+        <div class="wa-actions-row">
+          <button type="button" id="copyWaTextBtn" class="btn btn-primary">Copy Teks WA</button>
+          <a id="openWaLinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-success">Buka di WhatsApp</a>
+        </div>
+        <div id="waMediaSection" class="wa-media-section">
+          <div class="wa-media-title">
+            <strong>Gambar / Dokumentasi Terlampir</strong>
+            <span class="muted">(Klik "Copy Gambar" lalu Ctrl+V langsung di chat WhatsApp Web)</span>
+          </div>
+          <div id="waMediaList" class="wa-media-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <script src="config.js"></script>

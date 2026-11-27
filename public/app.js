@@ -683,6 +683,7 @@ function renderLogsTable() {
           </td>
           <td>
             <div class="actions-cell">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="openWaReportModal(${l.id})">Report WA</button>
               ${!isResolved ? `<button type="button" class="btn btn-success btn-sm" onclick="openEditLogModal(${l.id}, true)">Selesaikan</button>` : ""}
               <button type="button" class="btn btn-ghost btn-sm" onclick="openEditLogModal(${l.id}, false)">Edit</button>
               <button type="button" class="btn btn-danger btn-sm" onclick="deleteLog(${l.id})">Hapus</button>
@@ -1020,6 +1021,160 @@ $("exportCsvBtn").addEventListener("click", () => {
   a.download = "plant_problem_logs.csv";
   a.click();
   URL.revokeObjectURL(a.href);
+});
+
+// --- Generate WA Report & Copy Image ---
+function buildWaReportText(log) {
+  const isResolved = Boolean(log.tanggal_problem_selesai && log.jam_problem_selesai);
+  const progressLabel = isResolved ? "RESOLVED (SELESAI)" : "OPEN (DALAM PENANGANAN)";
+  const sevLabel = String(log.status || "-").toUpperCase();
+  const kegiatan = log.deskripsi_kegiatan_perbaikan || log.tindakan || "";
+  const repFiles = asArray(log.lampiran_report);
+  const resFiles = asArray(log.lampiran_resolve);
+
+  const lines = [
+    `*LAPORAN PROBLEM PLANT #${log.id}*`,
+    `Status: *${progressLabel}* | Severity: *${sevLabel}*`,
+    `--------------------------------`,
+    `• *Line:* Line ${log.line}`,
+    `• *Mesin:* ${log.kode} (${log.nama_equipment})`,
+    `• *Kategori:* ${log.kategori}`,
+    log.shift ? `• *Shift:* ${log.shift}` : null,
+    `• *Waktu Masuk:* ${log.tanggal_problem_masuk} ${log.jam_problem_masuk}`,
+    isResolved ? `• *Waktu Selesai:* ${log.tanggal_problem_selesai} ${log.jam_problem_selesai}` : null,
+    isResolved ? `• *Durasi Downtime:* ${formatDuration(log.durasi_menit)}` : null,
+    `• *Pelapor:* ${log.pelapor || "-"}`,
+    log.pic_teknisi ? `• *PIC Teknisi:* ${log.pic_teknisi}` : null,
+    ``,
+    `*Deskripsi Kendala:*`,
+    log.deskripsi_kendala || "-",
+  ].filter((x) => x !== null);
+
+  if (kegiatan) {
+    lines.push(``, `*Kegiatan Perbaikan:*`, kegiatan);
+  }
+  if (repFiles.length > 0) {
+    lines.push(``, `*Dokumentasi Report:*`);
+    repFiles.forEach((f, i) => lines.push(`${i + 1}. ${f.url}`));
+  }
+  if (resFiles.length > 0) {
+    lines.push(``, `*Dokumentasi Resolve:*`);
+    resFiles.forEach((f, i) => lines.push(`${i + 1}. ${f.url}`));
+  }
+  return lines.join("\n");
+}
+
+async function copyImageToClipboard(imageUrl) {
+  if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
+    throw new Error("Browser tidak mendukung salin gambar langsung ke clipboard.");
+  }
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = () => reject(new Error("Gagal memuat gambar untuk disalin."));
+    img.src = imageUrl;
+  });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+
+  const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!pngBlob) throw new Error("Gagal mengonversi gambar ke PNG.");
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+}
+
+window.openWaReportModal = function (id) {
+  const log = state.logs.find((l) => Number(l.id) === Number(id));
+  if (!log) return;
+
+  $("waLogIdLabel").textContent = log.id;
+  const text = buildWaReportText(log);
+  $("waReportText").value = text;
+  $("openWaLinkBtn").href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+  const allMedia = [
+    ...asArray(log.lampiran_report).map((m) => ({ ...m, stage: "Report" })),
+    ...asArray(log.lampiran_resolve).map((m) => ({ ...m, stage: "Resolve" })),
+  ];
+
+  const listEl = $("waMediaList");
+  if (allMedia.length === 0) {
+    $("waMediaSection").classList.add("hidden");
+    listEl.innerHTML = "";
+  } else {
+    $("waMediaSection").classList.remove("hidden");
+    listEl.innerHTML = allMedia
+      .map((item, idx) => {
+        const isVid = isVideoFile(item);
+        const preview = isVid
+          ? `<div class="wa-media-thumb" style="display:flex;align-items:center;justify-content:center;font-size:28px;">🎬 Video</div>`
+          : `<img class="wa-media-thumb" src="${escapeHtml(item.url)}" alt="${escapeHtml(item.name)}" />`;
+        const actionBtn = isVid
+          ? `<button type="button" class="btn btn-secondary btn-sm" data-copy-link="${idx}">Salin Link</button>`
+          : `<button type="button" class="btn btn-primary btn-sm" data-copy-img="${idx}">Copy Gambar</button>`;
+        return `
+          <div class="wa-media-card">
+            ${preview}
+            <div class="wa-media-meta" title="${escapeHtml(item.name)}">[${item.stage}] ${escapeHtml(item.name)}</div>
+            <div class="wa-media-btns">
+              ${actionBtn}
+              <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Buka</a>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-copy-img]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const item = allMedia[Number(btn.dataset.copyImg)];
+        try {
+          await copyImageToClipboard(item.url);
+          showToast(`Gambar "${item.name}" disalin! Tinggal Ctrl+V di WhatsApp`);
+        } catch (err) {
+          showToast(err.message);
+        }
+      });
+    });
+
+    listEl.querySelectorAll("[data-copy-link]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const item = allMedia[Number(btn.dataset.copyLink)];
+        try {
+          await navigator.clipboard.writeText(item.url);
+          showToast(`Link video "${item.name}" disalin`);
+        } catch {
+          showToast("Gagal menyalin link");
+        }
+      });
+    });
+  }
+
+  $("waReportModal").classList.remove("hidden");
+};
+
+$("waReportText").addEventListener("input", () => {
+  $("openWaLinkBtn").href = `https://wa.me/?text=${encodeURIComponent($("waReportText").value)}`;
+});
+
+$("copyWaTextBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("waReportText").value);
+    showToast("Teks laporan disalin! Tinggal Ctrl+V di WhatsApp");
+  } catch {
+    $("waReportText").select();
+    document.execCommand("copy");
+    showToast("Teks laporan disalin");
+  }
+});
+
+$("closeWaModalBtn").addEventListener("click", () => $("waReportModal").classList.add("hidden"));
+$("waReportModal").addEventListener("click", (e) => {
+  if (e.target === $("waReportModal")) $("waReportModal").classList.add("hidden");
 });
 
 // --- Bootstrap ---
