@@ -810,3 +810,49 @@ body {
     grid-column: span 1;
   }
 }
+
+/* ============================================================
+   LOGIN & AUTH
+   ============================================================ */
+#loginModal {
+  display: flex;
+}
+
+.alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Role badge in topbar */
+.role-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin-left: 4px;
+}
+.role-admin {
+  background: #fef3c7;
+  color: #92400e;
+}
+.role-teknisi {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+/* Logout button in topbar */
+#logoutBtn {
+  margin-left: 4px;
+}
+
+/* Admin-only elements (hidden by default, shown by JS) */
+.admin-only {
+  /* Controlled via JS toggle of .hidden */
+}

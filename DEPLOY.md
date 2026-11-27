@@ -21,7 +21,7 @@ Panduan ini menjelaskan cara men-deploy **Plant Problem Logger** secara gratis a
 
 ---
 
-## Langkah 2: Buat Tabel Database di Supabase
+## Langkah 2A: Buat Tabel Database di Supabase (Tabel Utama)
 1. Di dashboard Supabase, buka menu **SQL Editor** → klik **New query**.
 2. Jalankan SQL berikut untuk membuat tabel `equipments` dan `problem_logs`:
 
@@ -56,10 +56,12 @@ create table if not exists public.problem_logs (
   deskripsi_kegiatan_perbaikan text default '',
   lampiran_report jsonb not null default '[]'::jsonb,
   lampiran_resolve jsonb not null default '[]'::jsonb,
+  created_by_id   uuid,
+  created_by_name text,
   created_at timestamptz default now()
 );
 
--- 3. Aktifkan RLS & izinkan akses publik (karena mode saat ini tanpa login)
+-- 3. Aktifkan RLS & izinkan akses publik
 alter table public.equipments enable row level security;
 alter table public.problem_logs enable row level security;
 
@@ -76,60 +78,55 @@ grant all on table public.problem_logs to anon, authenticated;
 grant usage, select on all sequences in schema public to anon, authenticated;
 ```
 
-3. *(Opsional)* Masukkan data awal **39 unit mesin & 2 log awal** dengan menjalankan query `INSERT` berikut di **SQL Editor → New query** (atau input manual lewat **Table Editor**):
+---
+
+## Langkah 2B: Buat Tabel User & Akun Admin *(BARU — Sistem Login)*
+Jalankan SQL berikut di **SQL Editor → New query**:
 
 ```sql
--- Seed 39 Master Equipment
-insert into public.equipments (kode_mesin, jenis_equipment, line, is_active) values
-  ('103 HCIC 00', 'konveyor', '3', true),
-  ('103 HCIC 01', 'konveyor', '3', true),
-  ('103 HC 03A', 'konveyor', '3', true),
-  ('103 HCIC 02A', 'konveyor', '3', true),
-  ('103 HCIC 02B', 'konveyor', '3', true),
-  ('103 IC 04A', 'konveyor', '3', true),
-  ('103 HCIC 05', 'konveyor', '3', true),
-  ('103 HCIC 03', 'konveyor', '3', true),
-  ('103 HC 10A', 'konveyor', '3', true),
-  ('103 HC 10B', 'konveyor', '3', true),
-  ('103 HCIC 04A', 'konveyor', '3', true),
-  ('103 HCIC 04B', 'konveyor', '3', true),
-  ('103 HCIC 06A', 'konveyor', '3', true),
-  ('103 HCIC 06B', 'konveyor', '3', true),
-  ('103 IC 11A', 'konveyor', '3', true),
-  ('103 IC 11B', 'konveyor', '3', true),
-  ('103 IC 15', 'konveyor', '3', true),
-  ('103 IC 12', 'konveyor', '3', true),
-  ('103 HC 16A', 'konveyor', '3', true),
-  ('103 HC 16B', 'konveyor', '3', true),
-  ('103 CD 001', 'Compacting Dehydrator 1.1', '3', true),
-  ('103 CD 002', 'Compacting Dehydrator 1.2', '3', true),
-  ('103 PS 001', 'Primary Shredder', '3', true),
-  ('103 DS 001', 'Dinamic Screener', '3', true),
-  ('103 WS 001', 'Wind Shifter', '3', true),
-  ('103 SS 001', 'Secondary Shredder 1.1', '3', true),
-  ('103 SS 002', 'Secondary Shredder 1.2', '3', true),
-  ('103 RD 001', 'Furnace & Drum Dryer 1.1', '3', true),
-  ('103 RD 002', 'Furnace & Drum Dryer 1.2', '3', true),
-  ('103 -', 'Bag Filter, Cyclone & Wet Scrubber', '3', true),
-  ('103 BM 001', 'Baler Machine', '3', true),
-  ('102 T 001', 'test 2.1', '2', true),
-  ('102 T 002', 'test 2.2', '2', true),
-  ('102 T 003', 'test 2.3', '2', true),
-  ('102 T 004', 'test 2.4', '2', true),
-  ('101 T 001', 'test 1.1', '1', true),
-  ('101 T 002', 'test 1.2', '1', true),
-  ('101 T 003', 'test 1.3', '1', true),
-  ('101 T 004', 'test 1.4', '1', true);
+-- 1. Tabel pengguna aplikasi
+create table if not exists public.app_users (
+  id        uuid default gen_random_uuid() primary key,
+  username  text unique not null,
+  full_name text,
+  pwd_hash  text not null,          -- SHA-256 hex dari password
+  role      text check (role in ('admin','teknisi')) not null default 'teknisi',
+  is_active boolean not null default true,
+  created_at timestamptz default now()
+);
 
--- Seed 2 Log Problem Awal
-insert into public.problem_logs (
-  tanggal_problem_masuk, jam_problem_masuk, line, kode, nama_equipment,
-  kategori, deskripsi_kendala, status, tanggal_problem_selesai, jam_problem_selesai,
-  durasi_menit, shift, pelapor
-) values
-  ('2026-11-25', '14:31:00', '3', '103 DS 001', 'Dinamic Screener', 'elektrikal', 'kabel putus', 'critical', '2026-11-25', '15:36:00', 65, 'Shift 2', 'Admin Plant'),
-  ('2026-11-25', '14:31:00', '3', '103 WS 001', 'Wind Shifter', 'instrument', 'data tidak ada', 'critical', '2026-11-25', '15:39:00', 68, 'Shift 2', 'Admin Plant');
+-- 2. Tambah kolom created_by ke problem_logs (skip jika sudah ada)
+alter table public.problem_logs
+  add column if not exists created_by_id   uuid references public.app_users(id) on delete set null,
+  add column if not exists created_by_name text;
+
+-- 3. Grant izin ke role anon
+grant all on table public.app_users to anon, authenticated;
+
+-- 4. Seed akun admin awal
+--    Username : admin
+--    Password : admin123
+--    (Ganti pwd_hash jika ingin password berbeda — gunakan SHA-256 hex)
+insert into public.app_users (username, full_name, role, pwd_hash, is_active)
+values (
+  'admin',
+  'Administrator',
+  'admin',
+  '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a',
+  true
+)
+on conflict (username) do nothing;
 ```
+
+> **Cara mengubah password admin:**
+> 1. Buka https://emn178.github.io/online-tools/sha256.html
+> 2. Masukkan password baru → salin hasilnya
+> 3. Jalankan: `update public.app_users set pwd_hash = '<hash>' where username = 'admin';`
+
+---
+
+## Langkah 2C: Tambah Data Equipment & Log Awal *(opsional)*
+*(Isi data lewat Tab Master Equipment di aplikasi, atau jalankan SQL inject yang sudah disiapkan.)*
 
 ---
 
@@ -140,7 +137,7 @@ insert into public.problem_logs (
    - **Public bucket:** centang **ON** (agar foto/video bisa langsung tampil di web).
 3. Klik **Create bucket**.
 4. Masuk ke bucket `plant-media` → tab **Policies** → klik **New policy** → **For full customization**:
-   - Izinkan operasi `SELECT`, `INSERT`, `UPDATE`, `DELETE` untuk role `anon` (`true`) agar pengguna bisa mengunggah dan melihat dokumentasi foto/video.
+   - Izinkan operasi `SELECT`, `INSERT`, `UPDATE`, `DELETE` untuk role `anon` (`true`).
 
 ---
 
@@ -156,12 +153,17 @@ Pada tampilan Supabase terbaru, menunya terpisah menjadi dua bagian di **Project
 
 ---
 
-## Langkah 5: Sesuaikan Frontend untuk Mode Supabase
-Karena GitHub Pages hanya melayani file statis di folder `public/`:
-1. Pastikan seluruh panggilan API di `public/app.js` (`/api/bootstrap`, `/api/logs`, `/api/equipments`, `/api/upload`) diarahkan ke Supabase REST API & Storage API menggunakan `Project URL` dan `anon public key` di atas.
-2. Untuk fitur **Export CSV**, generate file CSV langsung di browser dari data `state.logs` menggunakan `Blob` + `URL.createObjectURL`.
+## Langkah 5: Isi Konfigurasi di `public/config.js`
+Edit file `public/config.js` dan isi:
 
-*(Jika Anda mau, saya bisa langsung buatkan file konfigurasi Supabase + update `app.js` agar otomatis mendukung mode lokal maupun GitHub Pages.)*
+```js
+window.APP_CONFIG = {
+  SUPABASE_URL:      "https://XXXXXXXX.supabase.co",   // ← ganti
+  SUPABASE_ANON_KEY: "sb_publishable_XXXX...",          // ← ganti
+  SUPABASE_BUCKET:   "plant-media",
+  USE_SUPABASE:      "auto",
+};
+```
 
 ---
 
@@ -174,6 +176,8 @@ Karena GitHub Pages hanya melayani file statis di folder `public/`:
    *(atau gunakan aplikasi **GitHub Desktop**).*
 3. Buka terminal di folder proyek `C:\Users\cctv\.gemini\antigravity\scratch\plant-problem-logger`, lalu jalankan:
    ```powershell
+   git config --global user.email "email@kamu.com"
+   git config --global user.name "Nama Kamu"
    git init
    git add .
    git commit -m "Initial commit: Plant Problem Logger"
@@ -185,40 +189,7 @@ Karena GitHub Pages hanya melayani file statis di folder `public/`:
 ---
 
 ## Langkah 7: Aktifkan GitHub Pages (Auto-Deploy)
-1. Buat file `.github/workflows/deploy.yml` di repository Anda untuk mempublikasikan folder `public/` ke GitHub Pages:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: ["main"]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "public"
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
+1. File `.github/workflows/deploy.yml` sudah tersedia di repository.
 2. Di halaman repository GitHub Anda, buka **Settings → Pages**.
 3. Pada bagian **Build and deployment → Source**, pilih **GitHub Actions**.
 4. Setiap kali Anda `git push` ke branch `main`, aplikasi otomatis ter-deploy dan dapat diakses melalui:
@@ -228,7 +199,31 @@ jobs:
 
 ---
 
+## Sistem Login & Role *(BARU)*
+
+| Role | Bisa Input Log | Edit Log | Hapus Log | Lihat Semua Log | Master Equipment | Manajemen User |
+|------|:-:|:-:|:-:|:-:|:-:|:-:|
+| **Admin** | ✅ | ✅ Semua log | ✅ | ✅ | ✅ | ✅ |
+| **Teknisi** | ✅ | ✅ Log sendiri | ❌ | ✅ | ❌ | ❌ |
+
+**Alur login:**
+1. Buka aplikasi → muncul modal login.
+2. Masukkan username & password → klik **Login**.
+3. Sesi tersimpan di `localStorage` (auto-login saat buka kembali di browser yang sama).
+4. Klik **Logout** di pojok kanan atas untuk keluar.
+
+**Tambah user baru (admin):**
+- Login sebagai admin → buka tab **Manajemen User** → isi form → **Tambah User**.
+
+**Teknisi tidak bisa hapus log:**
+- Tombol **Hapus** hanya muncul untuk admin.
+- Jika teknisi ingin mengedit log orang lain, tampil tombol **Minta Edit** yang menampilkan pesan untuk menghubungi admin.
+
+**Password:** Disimpan sebagai SHA-256 hash — tidak ada password plaintext di database.
+
+---
+
 ## Catatan Keamanan & Batas Free Tier
-- **Batas Supabase Free Tier:** 500 MB database & 1 GB storage file. Untuk penggunaan jangka panjang dengan banyak video, kompres video singkat atau bersihkan lampiran lama secara berkala.
+- **Batas Supabase Free Tier:** 500 MB database & 1 GB storage file. Kompres video singkat atau bersihkan lampiran lama secara berkala.
 - **Auto-Pause:** Supabase Free Tier akan *pause* otomatis jika **tidak ada akses sama sekali selama 7 hari**, dan bisa diaktifkan kembali lewat tombol *Restore* di dashboard Supabase.
-- **Hak Akses:** Karena saat ini menggunakan mode tanpa login (hanya input nama di awal sesi), simpan link aplikasi hanya untuk tim internal *plant*. Jika ke depan butuh login per akun, Supabase Auth dapat langsung diaktifkan pada tabel yang sama.
+- **Keamanan:** Password di-hash di browser sebelum dikirim ke Supabase. Jangan share `service_role` key.

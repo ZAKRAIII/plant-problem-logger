@@ -6,12 +6,116 @@ const state = {
   categories: [],
   statuses: [],
   shifts: [],
-  userName: localStorage.getItem("plant_logger_username") || "",
+  users: [],
+  currentUser: null, // { id, username, full_name, role }
   formReportMedia: [],
   formResolveMedia: [],
   editReportMedia: [],
   editResolveMedia: [],
 };
+
+// ============================================================
+// AUTH — SHA-256, Login, Logout
+// ============================================================
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function saveSession(user) {
+  localStorage.setItem("plant_logger_session", JSON.stringify(user));
+  state.currentUser = user;
+}
+
+function clearSession() {
+  localStorage.removeItem("plant_logger_session");
+  state.currentUser = null;
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem("plant_logger_session");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+async function performLogin(username, password) {
+  const hash = await sha256(password);
+  let user;
+  if (isSupabaseMode()) {
+    const rows = await supabaseRest(
+      `app_users?username=eq.${encodeURIComponent(username)}&is_active=eq.true&select=id,username,full_name,role,pwd_hash`
+    );
+    if (!rows || rows.length === 0) throw new Error("Username tidak ditemukan atau non-aktif.");
+    user = rows[0];
+  } else {
+    // local fallback — tidak diimplementasikan, tolak
+    throw new Error("Mode lokal tidak mendukung login. Gunakan GitHub Pages dengan Supabase.");
+  }
+  if (user.pwd_hash !== hash) throw new Error("Password salah.");
+  return { id: user.id, username: user.username, full_name: user.full_name, role: user.role };
+}
+
+function applyRoleUI() {
+  const isAdmin = state.currentUser && state.currentUser.role === "admin";
+  document.querySelectorAll(".admin-only").forEach((el) => {
+    el.classList.toggle("hidden", !isAdmin);
+  });
+  // Update topbar
+  const nameEl = $("currentUserName");
+  const roleEl = $("currentUserRole");
+  if (nameEl) nameEl.textContent = state.currentUser ? state.currentUser.full_name : "-";
+  if (roleEl) {
+    roleEl.textContent = state.currentUser
+      ? state.currentUser.role === "admin" ? "Admin" : "Teknisi"
+      : "";
+    roleEl.className = "role-badge role-" + (state.currentUser?.role || "");
+  }
+}
+
+// Login form submit
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = $("loginUsername").value.trim();
+  const password = $("loginPassword").value;
+  const errEl = $("loginError");
+  const btn = $("loginSubmitBtn");
+  errEl.classList.add("hidden");
+  errEl.textContent = "";
+  btn.disabled = true;
+  btn.textContent = "Memeriksa...";
+  try {
+    const user = await performLogin(username, password);
+    saveSession(user);
+    $("loginModal").classList.add("hidden");
+    applyRoleUI();
+    // pre-fill pelapor
+    if ($("fPelapor") && !$("fPelapor").value) $("fPelapor").value = user.full_name;
+    showToast(`Selamat datang, ${user.full_name}!`);
+    // Load data after login
+    await loadAppData();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Login";
+  }
+});
+
+$("logoutBtn").addEventListener("click", () => {
+  if (!confirm("Yakin ingin logout?")) return;
+  clearSession();
+  applyRoleUI();
+  // Go back to login
+  $("loginModal").classList.remove("hidden");
+  $("loginUsername").value = "";
+  $("loginPassword").value = "";
+  $("loginError").classList.add("hidden");
+});
 
 function asArray(val) {
   if (!val) return [];
@@ -257,13 +361,16 @@ async function api(url, options = {}) {
   const body = options.body ? JSON.parse(options.body) : null;
 
   if (url === "/api/bootstrap" && method === "GET") {
-    const [equipments, logs] = await Promise.all([
+    const fetchUsers = isAdmin() ? supabaseRest("app_users?select=id,username,full_name,role,is_active&order=id.asc") : Promise.resolve([]);
+    const [equipments, logs, users] = await Promise.all([
       supabaseRest("equipments?select=*&order=id.asc"),
       supabaseRest("problem_logs?select=*&order=id.asc"),
+      fetchUsers,
     ]);
     return {
       equipments: equipments || [],
       logs: logs || [],
+      users: users || [],
       categories: cfg.CATEGORIES || ["elektrikal", "mekanikal", "material", "instrument"],
       statuses: cfg.STATUSES || ["critical", "moderate"],
       shifts: cfg.SHIFTS || ["Shift 1", "Shift 2", "Shift 3"],
@@ -343,34 +450,20 @@ async function api(url, options = {}) {
   throw new Error(`Endpoint tidak dikenal: ${method} ${url}`);
 }
 
-// --- User Name Gate ---
-function initUserIdentity() {
-  if (!state.userName) {
-    $("nameModal").classList.remove("hidden");
-    $("userNameInput").focus();
+// --- Auth Init ---
+function initAuth() {
+  const session = loadSession();
+  if (session) {
+    state.currentUser = session;
+    $("loginModal").classList.add("hidden");
+    // pre-fill pelapor with full name
+    if ($("fPelapor") && !$("fPelapor").value) $("fPelapor").value = session.full_name;
+    applyRoleUI();
   } else {
-    $("currentUserName").textContent = state.userName;
-    if (!$("fPelapor").value) $("fPelapor").value = state.userName;
+    // loginModal is already visible by default (no .hidden class in HTML)
+    $("loginUsername").focus();
   }
 }
-
-$("nameForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const val = $("userNameInput").value.trim();
-  if (!val) return;
-  state.userName = val;
-  localStorage.setItem("plant_logger_username", val);
-  $("currentUserName").textContent = val;
-  $("fPelapor").value = val;
-  $("nameModal").classList.add("hidden");
-  showToast(`Halo, ${val}`);
-});
-
-$("changeNameBtn").addEventListener("click", () => {
-  $("userNameInput").value = state.userName;
-  $("nameModal").classList.remove("hidden");
-  $("userNameInput").focus();
-});
 
 // --- Tabs ---
 document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -542,6 +635,8 @@ $("logForm").addEventListener("submit", async (e) => {
     lampiran_resolve: state.formResolveMedia,
     tanggal_problem_selesai: $("fTanggalSelesai").value,
     jam_problem_selesai: $("fJamSelesai").value,
+    created_by_id: state.currentUser ? state.currentUser.id : null,
+    created_by_name: state.currentUser ? state.currentUser.full_name : ($("fPelapor").value.trim() || null),
   };
 
   try {
@@ -601,6 +696,30 @@ function renderDashboard() {
       `;
     })
     .join("");
+}
+
+// --- Role-Based Log Action Buttons ---
+function renderLogActionButtons(log, isResolved) {
+  const cu = state.currentUser;
+  if (!cu) return "";
+  const isAdmin = cu.role === "admin";
+  const isOwner = log.created_by_id && log.created_by_id === cu.id;
+  const canEdit = isAdmin || isOwner;
+  const canDelete = isAdmin;
+
+  let btns = "";
+  if (!isResolved && canEdit) {
+    btns += `<button type="button" class="btn btn-success btn-sm" onclick="openEditLogModal(${log.id}, true)">Selesaikan</button>`;
+  }
+  if (canEdit) {
+    btns += `<button type="button" class="btn btn-ghost btn-sm" onclick="openEditLogModal(${log.id}, false)">Edit</button>`;
+  } else {
+    btns += `<button type="button" class="btn btn-ghost btn-sm" onclick="requestEditLog(${log.id})">Minta Edit</button>`;
+  }
+  if (canDelete) {
+    btns += `<button type="button" class="btn btn-danger btn-sm" onclick="deleteLog(${log.id})">Hapus</button>`;
+  }
+  return btns;
 }
 
 // --- Render Logs Table ---
@@ -680,13 +799,12 @@ function renderLogsTable() {
           <td>
             <div>${escapeHtml(l.pelapor || "-")}</div>
             ${l.pic_teknisi ? `<div class="muted">PIC: ${escapeHtml(l.pic_teknisi)}</div>` : ""}
+            ${l.created_by_name ? `<div class="muted" style="font-size:11px;">By: ${escapeHtml(l.created_by_name)}</div>` : ""}
           </td>
           <td>
             <div class="actions-cell">
               <button type="button" class="btn btn-secondary btn-sm" onclick="openWaReportModal(${l.id})">Report WA</button>
-              ${!isResolved ? `<button type="button" class="btn btn-success btn-sm" onclick="openEditLogModal(${l.id}, true)">Selesaikan</button>` : ""}
-              <button type="button" class="btn btn-ghost btn-sm" onclick="openEditLogModal(${l.id}, false)">Edit</button>
-              <button type="button" class="btn btn-danger btn-sm" onclick="deleteLog(${l.id})">Hapus</button>
+              ${renderLogActionButtons(l, isResolved)}
             </div>
           </td>
         </tr>
@@ -840,6 +958,10 @@ $("editLogForm").addEventListener("submit", async (e) => {
 });
 
 window.deleteLog = async function (id) {
+  if (!state.currentUser || state.currentUser.role !== "admin") {
+    showToast("Hanya admin yang dapat menghapus log.");
+    return;
+  }
   if (!confirm(`Yakin ingin menghapus Problem Log #${id}?`)) return;
   try {
     await api(`/api/logs/${id}`, { method: "DELETE" });
@@ -849,6 +971,10 @@ window.deleteLog = async function (id) {
   } catch (err) {
     showToast("Gagal menghapus: " + err.message);
   }
+};
+
+window.requestEditLog = function (id) {
+  showToast(`Log #${id}: Hubungi admin untuk meminta perubahan data.`);
 };
 
 // --- Master Equipment ---
@@ -1178,22 +1304,122 @@ $("waReportModal").addEventListener("click", (e) => {
 });
 
 // --- Bootstrap ---
+function isAdmin() {
+  return state.currentUser && state.currentUser.role === "admin";
+}
+
 function renderAll() {
   renderDashboard();
   renderLogsTable();
   renderEquipTable();
+  if (isAdmin()) renderUserTable();
 }
 
-async function init() {
-  const cfg = window.APP_CONFIG || {};
-  state.categories = cfg.CATEGORIES || ["elektrikal", "mekanikal", "material", "instrument"];
-  state.statuses = cfg.STATUSES || ["critical", "moderate"];
-  state.shifts = cfg.SHIFTS || ["Shift 1", "Shift 2", "Shift 3"];
+// ============================================================
+// MANAJEMEN USER (admin only)
+// ============================================================
+function renderUserTable() {
+  const tbody = $("userTableBody");
+  if (!tbody) return;
+  $("userCount").textContent = state.users.length;
+  if (state.users.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center;padding:24px;">Belum ada user.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = state.users.map((u) => {
+    const roleBadge = u.role === "admin"
+      ? `<span class="badge badge-critical">Admin</span>`
+      : `<span class="badge badge-cat">Teknisi</span>`;
+    const activeBadge = u.is_active !== false
+      ? `<span class="badge badge-resolved">Aktif</span>`
+      : `<span class="badge badge-inactive">Non-aktif</span>`;
+    return `
+      <tr>
+        <td class="mono">${u.id.slice(0, 8)}…</td>
+        <td class="mono">${escapeHtml(u.username)}</td>
+        <td>${escapeHtml(u.full_name || "-")}</td>
+        <td>${roleBadge}</td>
+        <td>${activeBadge}</td>
+        <td>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openEditUserModal('${u.id}')">Edit</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
 
+$("addUserForm") && $("addUserForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!isAdmin()) { showToast("Akses ditolak."); return; }
+  const username = $("newUserUsername").value.trim();
+  const full_name = $("newUserFullname").value.trim();
+  const password = $("newUserPassword").value;
+  const role = $("newUserRole").value;
+  try {
+    const pwd_hash = await sha256(password);
+    const rows = await supabaseRest("app_users", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ username, full_name, role, pwd_hash, is_active: true }),
+    });
+    state.users.push(rows[0]);
+    $("addUserForm").reset();
+    renderUserTable();
+    showToast(`User ${username} berhasil ditambahkan`);
+  } catch (err) {
+    showToast("Gagal tambah user: " + err.message);
+  }
+});
+
+window.openEditUserModal = function (id) {
+  const u = state.users.find((x) => x.id === id);
+  if (!u) return;
+  $("editUserId").value = u.id;
+  $("editUserLabel").textContent = u.username;
+  $("editUserFullname").value = u.full_name || "";
+  $("editUserRole").value = u.role;
+  $("editUserPassword").value = "";
+  $("editUserActive").checked = u.is_active !== false;
+  $("editUserModal").classList.remove("hidden");
+};
+
+function closeUserModal() { $("editUserModal").classList.add("hidden"); }
+$("closeUserModalBtn") && $("closeUserModalBtn").addEventListener("click", closeUserModal);
+$("cancelUserModalBtn") && $("cancelUserModalBtn").addEventListener("click", closeUserModal);
+
+$("editUserForm") && $("editUserForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!isAdmin()) { showToast("Akses ditolak."); return; }
+  const id = $("editUserId").value;
+  const payload = {
+    full_name: $("editUserFullname").value.trim(),
+    role: $("editUserRole").value,
+    is_active: $("editUserActive").checked,
+  };
+  const newPwd = $("editUserPassword").value;
+  if (newPwd) payload.pwd_hash = await sha256(newPwd);
+  try {
+    const rows = await supabaseRest(`app_users?id=eq.${id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(payload),
+    });
+    const idx = state.users.findIndex((x) => x.id === id);
+    if (idx !== -1) state.users[idx] = { ...state.users[idx], ...rows[0] };
+    closeUserModal();
+    renderUserTable();
+    showToast("User berhasil diperbarui");
+  } catch (err) {
+    showToast("Gagal update user: " + err.message);
+  }
+});
+
+async function loadAppData() {
   try {
     const data = await api("/api/bootstrap");
     state.equipments = data.equipments || [];
     state.logs = data.logs || [];
+    state.users = data.users || [];
     state.categories = data.categories || state.categories;
     state.statuses = data.statuses || state.statuses;
     state.shifts = data.shifts || state.shifts;
@@ -1211,9 +1437,23 @@ async function init() {
   } finally {
     populateSelectOptions();
     resetLogFormDefaults();
-    initUserIdentity();
     renderAll();
   }
+}
+
+async function init() {
+  const cfg = window.APP_CONFIG || {};
+  state.categories = cfg.CATEGORIES || ["elektrikal", "mekanikal", "material", "instrument"];
+  state.statuses = cfg.STATUSES || ["critical", "moderate"];
+  state.shifts = cfg.SHIFTS || ["Shift 1", "Shift 2", "Shift 3"];
+
+  // Check session first
+  initAuth();
+
+  // Only load data if user is logged in
+  if (!state.currentUser) return;
+
+  await loadAppData();
 }
 
 init();

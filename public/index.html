@@ -8,20 +8,25 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Name Gate Modal -->
-  <div id="nameModal" class="modal-backdrop hidden">
+  <!-- Login Modal -->
+  <div id="loginModal" class="modal-backdrop">
     <div class="modal-card modal-sm">
       <div class="modal-header">
-        <h2>Selamat Datang di Plant Problem Logger</h2>
+        <h2>🔐 Login Plant Problem Logger</h2>
       </div>
-      <form id="nameForm" class="modal-body">
-        <p class="muted">Masukkan nama Anda untuk pencatatan pelapor / teknisi pada sesi ini.</p>
+      <form id="loginForm" class="modal-body">
+        <p class="muted">Masukkan username dan password untuk melanjutkan.</p>
+        <div id="loginError" class="alert-error hidden"></div>
         <div class="field">
-          <label for="userNameInput">Nama Anda</label>
-          <input type="text" id="userNameInput" placeholder="Contoh: Budi / Teknisi Shift 2" required autocomplete="off" />
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" placeholder="Masukkan username" required autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Masukkan password" required />
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Mulai Gunakan Aplikasi</button>
+          <button type="submit" class="btn btn-primary" id="loginSubmitBtn">Login</button>
         </div>
       </form>
     </div>
@@ -39,16 +44,18 @@
       </div>
       <nav class="tabs" role="tablist">
         <button class="tab-btn active" data-tab="logsTab">Log Problem</button>
-        <button class="tab-btn" data-tab="equipTab">Master Equipment</button>
+        <button class="tab-btn admin-only hidden" data-tab="equipTab">Master Equipment</button>
+        <button class="tab-btn admin-only hidden" data-tab="userTab">Manajemen User</button>
       </nav>
     </div>
     <div class="topbar-right">
-      <div class="user-pill" id="userBadge" title="Klik untuk ganti nama">
+      <div class="user-pill" id="userBadge">
         <span class="user-avatar">👤</span>
         <span id="currentUserName">-</span>
-        <button type="button" id="changeNameBtn" class="btn-link">Ganti</button>
+        <span id="currentUserRole" class="role-badge"></span>
       </div>
       <button type="button" id="exportCsvBtn" class="btn btn-secondary btn-sm">Export CSV</button>
+      <button type="button" id="logoutBtn" class="btn btn-ghost btn-sm">Logout</button>
     </div>
   </header>
 
@@ -242,6 +249,60 @@
       </div>
     </section>
 
+    <!-- TAB 3: MANAJEMEN USER (admin only) -->
+    <section id="userTab" class="tab-panel admin-only hidden">
+      <div class="card">
+        <div class="card-header">
+          <h3>+ Tambah User Baru</h3>
+        </div>
+        <form id="addUserForm" class="form-grid">
+          <div class="field">
+            <label for="newUserUsername">Username *</label>
+            <input type="text" id="newUserUsername" placeholder="Contoh: budi.teknisi" required autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="newUserFullname">Nama Lengkap *</label>
+            <input type="text" id="newUserFullname" placeholder="Contoh: Budi Santoso" required />
+          </div>
+          <div class="field">
+            <label for="newUserPassword">Password *</label>
+            <input type="password" id="newUserPassword" placeholder="Minimal 6 karakter" required minlength="6" />
+          </div>
+          <div class="field">
+            <label for="newUserRole">Role *</label>
+            <select id="newUserRole" required>
+              <option value="teknisi">Teknisi</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Tambah User</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Daftar User (<span id="userCount">0</span>)</h3>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Nama Lengkap</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- TAB 2: MASTER EQUIPMENT -->
     <section id="equipTab" class="tab-panel">
       <div class="card">
@@ -296,7 +357,45 @@
     </section>
   </main>
 
-  <!-- Edit / Resolve Log Modal -->
+  <!-- Edit User Modal (admin only) -->
+  <div id="editUserModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h2>Edit User — <span id="editUserLabel"></span></h2>
+        <button type="button" id="closeUserModalBtn" class="btn-close">&times;</button>
+      </div>
+      <form id="editUserForm" class="modal-body">
+        <input type="hidden" id="editUserId" />
+        <div class="field">
+          <label for="editUserFullname">Nama Lengkap *</label>
+          <input type="text" id="editUserFullname" required />
+        </div>
+        <div class="field">
+          <label for="editUserRole">Role *</label>
+          <select id="editUserRole" required>
+            <option value="teknisi">Teknisi</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="editUserPassword">Password Baru (kosongkan jika tidak diganti)</label>
+          <input type="password" id="editUserPassword" placeholder="Kosongkan jika tidak diganti" minlength="6" />
+        </div>
+        <div class="field checkbox-field">
+          <label>
+            <input type="checkbox" id="editUserActive" />
+            Aktif (user bisa login)
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelUserModalBtn" class="btn btn-ghost">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Log Modal -->
   <div id="editLogModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
