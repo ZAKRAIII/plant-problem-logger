@@ -100,7 +100,11 @@ alter table public.problem_logs
   add column if not exists created_by_id   uuid references public.app_users(id) on delete set null,
   add column if not exists created_by_name text;
 
--- 3. Grant izin ke role anon
+-- 3. Aktifkan RLS & grant izin ke role anon
+alter table public.app_users enable row level security;
+drop policy if exists "Allow all app_users" on public.app_users;
+create policy "Allow all app_users" on public.app_users
+  for all using (true) with check (true);
 grant all on table public.app_users to anon, authenticated;
 
 -- 4. Seed akun admin awal
@@ -112,10 +116,12 @@ values (
   'admin',
   'Administrator',
   'admin',
-  '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a',
+  '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
   true
 )
-on conflict (username) do nothing;
+on conflict (username) do update
+  set pwd_hash = excluded.pwd_hash,
+      is_active = true;
 ```
 
 > **Cara mengubah password admin:**

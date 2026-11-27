@@ -92,8 +92,6 @@ $("loginForm").addEventListener("submit", async (e) => {
     saveSession(user);
     $("loginModal").classList.add("hidden");
     applyRoleUI();
-    // pre-fill pelapor
-    if ($("fPelapor") && !$("fPelapor").value) $("fPelapor").value = user.full_name;
     showToast(`Selamat datang, ${user.full_name}!`);
     // Load data after login
     await loadAppData();
@@ -456,8 +454,6 @@ function initAuth() {
   if (session) {
     state.currentUser = session;
     $("loginModal").classList.add("hidden");
-    // pre-fill pelapor with full name
-    if ($("fPelapor") && !$("fPelapor").value) $("fPelapor").value = session.full_name;
     applyRoleUI();
   } else {
     // loginModal is already visible by default (no .hidden class in HTML)
@@ -588,7 +584,6 @@ $("fResolveFiles").addEventListener("change", async (e) => {
 function resetLogFormDefaults() {
   $("fTanggalMasuk").value = getLocalDateStr();
   $("fJamMasuk").value = getLocalTimeStr();
-  $("fPelapor").value = state.userName || "";
   $("fTanggalSelesai").value = "";
   $("fJamSelesai").value = "";
   $("fDeskripsi").value = "";
@@ -627,7 +622,7 @@ $("logForm").addEventListener("submit", async (e) => {
     shift: $("fShift").value,
     tanggal_problem_masuk: $("fTanggalMasuk").value,
     jam_problem_masuk: $("fJamMasuk").value,
-    pelapor: $("fPelapor").value.trim(),
+    pelapor: state.currentUser ? (state.currentUser.full_name || state.currentUser.username) : "",
     deskripsi_kendala: $("fDeskripsi").value.trim(),
     pic_teknisi: $("fPic").value.trim(),
     deskripsi_kegiatan_perbaikan: $("fKegiatanPerbaikan").value.trim(),
@@ -636,7 +631,7 @@ $("logForm").addEventListener("submit", async (e) => {
     tanggal_problem_selesai: $("fTanggalSelesai").value,
     jam_problem_selesai: $("fJamSelesai").value,
     created_by_id: state.currentUser ? state.currentUser.id : null,
-    created_by_name: state.currentUser ? state.currentUser.full_name : ($("fPelapor").value.trim() || null),
+    created_by_name: state.currentUser ? (state.currentUser.full_name || state.currentUser.username) : null,
   };
 
   try {
@@ -875,7 +870,6 @@ window.openEditLogModal = function (id, quickResolve = false) {
   $("eStatus").value = log.status;
   $("eShift").value = log.shift || "";
   $("eDeskripsi").value = log.deskripsi_kendala || "";
-  $("ePelapor").value = log.pelapor || "";
   $("ePic").value = log.pic_teknisi || "";
   $("eKegiatanPerbaikan").value = log.deskripsi_kegiatan_perbaikan || log.tindakan || "";
   $("eTanggalMasuk").value = log.tanggal_problem_masuk || "";
@@ -931,7 +925,6 @@ $("editLogForm").addEventListener("submit", async (e) => {
     status: $("eStatus").value,
     shift: $("eShift").value,
     deskripsi_kendala: $("eDeskripsi").value.trim(),
-    pelapor: $("ePelapor").value.trim(),
     pic_teknisi: $("ePic").value.trim(),
     deskripsi_kegiatan_perbaikan: $("eKegiatanPerbaikan").value.trim(),
     lampiran_report: state.editReportMedia,

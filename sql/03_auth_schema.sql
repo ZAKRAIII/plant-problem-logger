@@ -19,12 +19,18 @@ alter table problem_logs
   add column if not exists created_by_id   uuid references app_users(id) on delete set null,
   add column if not exists created_by_name text;
 
--- 3. Grant izin tabel baru ke role anon (untuk operasi via apikey)
-grant select, insert, update, delete on app_users to anon;
+-- 3. Aktifkan RLS & izinkan akses via anon key
+alter table app_users enable row level security;
+drop policy if exists "Allow all app_users" on app_users;
+create policy "Allow all app_users" on app_users
+  for all using (true) with check (true);
+
+-- 4. Grant izin tabel baru ke role anon (untuk operasi via apikey)
+grant select, insert, update, delete on app_users to anon, authenticated;
 
 -- ============================================================
 -- SEED: Akun admin awal
--- Password: admin123  →  SHA-256 hash di bawah
+-- Password: admin123  →  SHA-256 hash di bawah (64 karakter)
 -- Ganti pwd_hash jika ingin password berbeda.
 -- Hash generator: https://emn178.github.io/online-tools/sha256.html
 -- ============================================================
@@ -33,7 +39,9 @@ values (
   'admin',
   'Administrator',
   'admin',
-  '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a', -- admin123
+  '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', -- admin123
   true
 )
-on conflict (username) do nothing;
+on conflict (username) do update
+  set pwd_hash = excluded.pwd_hash,
+      is_active = true;
