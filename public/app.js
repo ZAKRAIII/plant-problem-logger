@@ -60,19 +60,33 @@ async function performLogin(username, password) {
 }
 
 function applyRoleUI() {
-  const isAdmin = state.currentUser && state.currentUser.role === "admin";
+  const role = state.currentUser?.role || "";
+  const isAdminUser = role === "admin";
+  const isGuestUser = role === "guest";
+  const isAuthUser = role === "admin" || role === "teknisi";
+
   document.querySelectorAll(".admin-only").forEach((el) => {
-    el.classList.toggle("hidden", !isAdmin);
+    el.classList.toggle("hidden", !isAdminUser);
   });
+  document.querySelectorAll(".auth-only").forEach((el) => {
+    el.classList.toggle("hidden", !isAuthUser);
+  });
+  document.querySelectorAll(".guest-only").forEach((el) => {
+    el.classList.toggle("hidden", !isGuestUser);
+  });
+
   // Update topbar
   const nameEl = $("currentUserName");
   const roleEl = $("currentUserRole");
+  const logoutBtn = $("logoutBtn");
   if (nameEl) nameEl.textContent = state.currentUser ? state.currentUser.full_name : "-";
   if (roleEl) {
-    roleEl.textContent = state.currentUser
-      ? state.currentUser.role === "admin" ? "Admin" : "Teknisi"
-      : "";
-    roleEl.className = "role-badge role-" + (state.currentUser?.role || "");
+    const roleLabel = isAdminUser ? "Admin" : isGuestUser ? "Guest" : role === "teknisi" ? "Teknisi" : "";
+    roleEl.textContent = roleLabel;
+    roleEl.className = "role-badge role-" + role;
+  }
+  if (logoutBtn) {
+    logoutBtn.textContent = isGuestUser ? "Login" : "Logout";
   }
 }
 
@@ -104,15 +118,46 @@ $("loginForm").addEventListener("submit", async (e) => {
   }
 });
 
-$("logoutBtn").addEventListener("click", () => {
-  if (!confirm("Yakin ingin logout?")) return;
+$("guestLoginBtn").addEventListener("click", async () => {
+  const guestUser = { id: null, username: "guest", full_name: "Guest", role: "guest" };
+  saveSession(guestUser);
+  $("loginModal").classList.add("hidden");
+  $("loginError").classList.add("hidden");
+  applyRoleUI();
+  showToast("Masuk sebagai Guest (hanya lihat log)");
+  await loadAppData();
+});
+
+function openLoginScreen() {
   clearSession();
   applyRoleUI();
-  // Go back to login
   $("loginModal").classList.remove("hidden");
   $("loginUsername").value = "";
   $("loginPassword").value = "";
   $("loginError").classList.add("hidden");
+  $("loginUsername").focus();
+}
+
+$("logoutBtn").addEventListener("click", () => {
+  const isGuestUser = state.currentUser?.role === "guest";
+  if (!isGuestUser && !confirm("Yakin ingin logout?")) return;
+  openLoginScreen();
+});
+
+function closeGuestInfoModal() {
+  $("guestInfoModal").classList.add("hidden");
+}
+$("guestAddProblemBtn").addEventListener("click", () => {
+  $("guestInfoModal").classList.remove("hidden");
+});
+$("closeGuestInfoModalBtn").addEventListener("click", closeGuestInfoModal);
+$("okGuestInfoModalBtn").addEventListener("click", closeGuestInfoModal);
+$("guestToLoginBtn").addEventListener("click", () => {
+  closeGuestInfoModal();
+  openLoginScreen();
+});
+$("guestInfoModal").addEventListener("click", (e) => {
+  if (e.target === $("guestInfoModal")) closeGuestInfoModal();
 });
 
 function asArray(val) {
@@ -266,6 +311,8 @@ function escapeHtml(str) {
 }
 
 function isSupabaseMode() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("supabase") === "1") return true;
   const cfg = window.APP_CONFIG || {};
   if (cfg.USE_SUPABASE === true) return true;
   if (cfg.USE_SUPABASE === false) return false;
@@ -613,6 +660,10 @@ $("resetFormBtn").addEventListener("click", () => {
 // --- Create Problem Log ---
 $("logForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!state.currentUser || state.currentUser.role === "guest") {
+    showToast("Mode Guest tidak dapat menambah log. Hubungi teknisi in-charge.");
+    return;
+  }
   const payload = {
     line: $("fLine").value,
     kode: $("fKode").value,
@@ -696,7 +747,7 @@ function renderDashboard() {
 // --- Role-Based Log Action Buttons ---
 function renderLogActionButtons(log, isResolved) {
   const cu = state.currentUser;
-  if (!cu) return "";
+  if (!cu || cu.role === "guest") return "";
   const isAdmin = cu.role === "admin";
   const isOwner = log.created_by_id && log.created_by_id === cu.id;
   const canEdit = isAdmin || isOwner;

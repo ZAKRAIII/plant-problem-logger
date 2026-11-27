@@ -25,7 +25,8 @@
           <label for="loginPassword">Password</label>
           <input type="password" id="loginPassword" placeholder="Masukkan password" required />
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <button type="button" class="btn btn-secondary" id="guestLoginBtn">Masuk sebagai Guest</button>
           <button type="submit" class="btn btn-primary" id="loginSubmitBtn">Login</button>
         </div>
       </form>
@@ -90,8 +91,8 @@
         <div id="categoryBars" class="category-bars"></div>
       </div>
 
-      <!-- Quick Input Form -->
-      <div class="card">
+      <!-- Quick Input Form (hidden for Guest) -->
+      <div id="quickInputCard" class="card auth-only">
         <div class="card-header">
           <h3>+ Catat Problem Baru</h3>
           <button type="button" id="resetFormBtn" class="btn btn-ghost btn-sm">Reset Form</button>
@@ -194,7 +195,10 @@
       <div class="card">
         <div class="card-header">
           <h3>Daftar Log Problem</h3>
-          <span class="muted" id="logCountInfo">0 data</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span class="muted" id="logCountInfo">0 data</span>
+            <button type="button" id="guestAddProblemBtn" class="btn btn-primary btn-sm guest-only hidden">+ Tambah Kendala</button>
+          </div>
         </div>
 
         <div class="filters-bar">
@@ -564,6 +568,32 @@
           </div>
           <div id="waMediaList" class="wa-media-grid"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guest Tambah Kendala Info Modal -->
+  <div id="guestInfoModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h2>ℹ️ Tambah / Laporkan Kendala</h2>
+        <button type="button" id="closeGuestInfoModalBtn" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="guest-notice-box">
+          <strong>Akses Mode Guest (Hanya Lihat)</strong>
+          <p>Untuk menambahkan atau melaporkan kendala baru ke sistem, silakan <strong>hubungi tim teknisi yang sedang in-charge</strong>.</p>
+        </div>
+        <p class="muted" style="margin-top:12px;margin-bottom:6px;">Siapkan informasi berikut saat melapor ke teknisi in-charge:</p>
+        <ul class="guest-checklist">
+          <li><strong>Line &amp; Kode Mesin / Equipment</strong> yang bermasalah</li>
+          <li><strong>Deskripsi kendala</strong> yang terjadi</li>
+          <li><strong>Foto / video</strong> kondisi lapangan (jika ada)</li>
+        </ul>
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button type="button" id="guestToLoginBtn" class="btn btn-secondary">Login Akun</button>
+        <button type="button" id="okGuestInfoModalBtn" class="btn btn-primary">Mengerti</button>
       </div>
     </div>
   </div>
